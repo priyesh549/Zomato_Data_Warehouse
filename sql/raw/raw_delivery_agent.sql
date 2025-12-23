@@ -1,0 +1,11 @@
+USE SCHEMA RAW;
+
+CREATE OR REPLACE TABLE RAW_DELIVERY_AGENT (
+  AGENT_ID           STRING,
+  AGENT_NAME         STRING,
+  PHONE              STRING,
+  HIRE_DATE          STRING,
+  CITY               STRING,
+  VEHICLE_TYPE       STRING,
+  STATUS             STRING
+);
