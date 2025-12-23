@@ -1,0 +1,53 @@
+USE ROLE ACCOUNTADMIN;
+USE DATABASE ZOMATO_DWH;
+USE SCHEMA UTIL;
+
+CREATE OR REPLACE PROCEDURE SP_LOAD_DIM_CUSTOMER_SCD2()
+RETURNS STRING
+LANGUAGE JAVASCRIPT
+EXECUTE AS CALLER
+AS
+$$
+try {
+  snowflake.execute({sqlText:'BEGIN'});
+
+  snowflake.execute({sqlText:`
+    MERGE INTO INT.DIM_CUSTOMER d
+    USING STG.V_CUSTOMER_STG s
+      ON d.CUSTOMER_ID = s.CUSTOMER_ID
+     AND d.IS_CURRENT = TRUE
+     AND (
+       NVL(d.CUSTOMER_NAME,'')<>NVL(s.CUSTOMER_NAME,'') OR
+       NVL(d.EMAIL,'')<>NVL(s.EMAIL,'') OR
+       NVL(d.PRIMARY_PHONE,'')<>NVL(s.PRIMARY_PHONE,'') OR
+       NVL(d.CITY,'')<>NVL(s.CITY,'') OR
+       NVL(d.AREA,'')<>NVL(s.AREA,'') OR
+       NVL(d.SEGMENT,'')<>NVL(s.SEGMENT,'') OR
+       NVL(d.IS_PRIME_MEMBER,FALSE)<>NVL(s.IS_PRIME_MEMBER,FALSE) OR
+       NVL(d.STATUS,'')<>NVL(s.STATUS,'')
+     )
+    WHEN MATCHED THEN UPDATE SET
+      EFFECTIVE_TO=CURRENT_TIMESTAMP(),
+      IS_CURRENT=FALSE
+  `});
+
+  snowflake.execute({sqlText:`
+    INSERT INTO INT.DIM_CUSTOMER
+    SELECT
+      s.CUSTOMER_ID,s.CUSTOMER_NAME,s.EMAIL,s.PRIMARY_PHONE,
+      s.CITY,s.AREA,s.SEGMENT,s.IS_PRIME_MEMBER,s.STATUS,
+      CURRENT_TIMESTAMP(),TO_TIMESTAMP_NTZ('9999-12-31'),
+      TRUE,'STG.V_CUSTOMER_STG'
+    FROM STG.V_CUSTOMER_STG s
+    LEFT JOIN INT.DIM_CUSTOMER d
+      ON d.CUSTOMER_ID=s.CUSTOMER_ID AND d.IS_CURRENT=TRUE
+    WHERE d.CUSTOMER_ID IS NULL
+  `});
+
+  snowflake.execute({sqlText:'COMMIT'});
+  return 'DIM_CUSTOMER loaded';
+} catch (err) {
+  snowflake.execute({sqlText:'ROLLBACK'});
+  return 'ERROR: ' + err;
+}
+$$;

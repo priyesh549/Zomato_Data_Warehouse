@@ -1,0 +1,40 @@
+---------------------------------------------------------------------------
+--  TIME TRAVEL & CLONE 
+---------------------------------------------------------------------------
+
+USE ROLE ACCOUNTADMIN;
+USE DATABASE ZOMATO_DWH;
+USE SCHEMA INT;
+
+-- Show current row
+SELECT * FROM DIM_CUSTOMER WHERE CUSTOMER_ID = 100 AND IS_CURRENT = TRUE;
+
+-- Simulate mistake
+UPDATE DIM_CUSTOMER
+  SET SEGMENT = 'BROKEN_SEGMENT'
+WHERE CUSTOMER_ID = 100
+  AND IS_CURRENT = TRUE;
+
+-- Check wrong data
+SELECT * FROM DIM_CUSTOMER WHERE CUSTOMER_ID = 100 AND IS_CURRENT = TRUE;
+
+-- Look back 5 minutes
+SELECT * FROM DIM_CUSTOMER AT (OFFSET => -300)
+WHERE CUSTOMER_ID = 100 AND IS_CURRENT = TRUE;
+
+-- Restore table from time travel if desired
+CREATE OR REPLACE TABLE DIM_CUSTOMER AS
+SELECT * FROM DIM_CUSTOMER AT (OFFSET => -300);
+
+-- Zero-copy clone
+CREATE OR REPLACE DATABASE ZOMATO_DWH_DEV CLONE ZOMATO_DWH;
+
+--15. Analysis of data loaded
+
+USE ROLE ACCOUNTADMIN;
+USE DATABASE ZOMATO_DWH;
+USE SCHEMA MARTS;
+
+USE ROLE ACCOUNTADMIN;
+USE DATABASE ZOMATO_DWH;
+USE SCHEMA MARTS;
